@@ -10,7 +10,7 @@ import (
 )
 
 func GetUnusedDisks(ctx context.Context, projectID string) []string {
-	//instancesClient, err := compute.NewInstancesRESTClient(ctx)
+	// Get a disk client so we could perform related operations
 	diskClient, err := compute.NewDisksRESTClient(ctx)
 	if err != nil {
 		panic(err)
@@ -18,13 +18,14 @@ func GetUnusedDisks(ctx context.Context, projectID string) []string {
 	}
 	defer diskClient.Close()
 
-	// Use the `MaxResults` parameter to limit the number of results that the API returns per response page.
+	// Protobuf that acts as a filter and other options that we may want to implement
 	req := &computepb.AggregatedListDisksRequest{
 		Project: projectID,
 	}
 
+	// Aggregated List gives an iterator that fetches data from all Regions so that
+	// we don't have to loop over every region
 	it := diskClient.AggregatedList(ctx, req)
-	fmt.Printf("Instances found:\n")
 
 	var unusedDisks []string
 	for {
@@ -37,9 +38,7 @@ func GetUnusedDisks(ctx context.Context, projectID string) []string {
 		}
 		disks := disk.Value.Disks
 		if len(disks) > 0 {
-			//fmt.Printf("zone -> %s\n", disk.Key)
 			for _, instance := range disks {
-				//fmt.Printf("disk - %s with size - %dGb has %d users\n", *instance.Name, *instance.SizeGb, len(instance.Users))
 				if len(instance.Users) == 0 {
 					unusedDisks = append(unusedDisks, *instance.Name)
 				}
